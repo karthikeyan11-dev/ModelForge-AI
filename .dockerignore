@@ -1,0 +1,17 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.db
+.DS_Store
+.git/
+.gitignore
+*.log
+uploads/
+datasets/
+models/*.joblib
+models/*.pkl
+data/
+frontend-react/
+node_modules/

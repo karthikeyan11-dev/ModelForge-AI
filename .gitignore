@@ -1,0 +1,71 @@
+# ===== Environment =====
+.env
+.env.*
+!.env.example
+
+# ===== Node / Frontend =====
+node_modules/
+frontend/node_modules/
+dist/
+build/
+.eslintcache
+
+# ===== Python =====
+venv/
+env/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+
+# ===== IDE / Editor =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+.classpath
+.factorypath
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== Generated Data / Storage =====
+uploads/
+backend/uploads/
+datasets/
+backend/datasets/
+models/
+backend/models/
+data/
+*.db
+*.sqlite3
+
+# ===== Logs =====
+*.log
+logs/
+backend/logs/
+
+# ===== Test/Debug files =====
+debug_*.py
+quick_test.py
+e2e_test.py
+demo.py
+verify_platform.py
+setup_test_db.py
+STABILIZATION_REPORT.md
+
+# ===== Jupyter =====
+.ipynb_checkpoints/
+*.ipynb
+
+# ===== Byte-compiled =====
+*.pyc
+*.pyo

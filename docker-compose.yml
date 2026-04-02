@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  # --- Backend: FastAPI ---
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.backend
+    container_name: data-cleaning-backend
+    restart: always
+    environment:
+      - FASTAPI_HOST=0.0.0.0
+      - FASTAPI_PORT=8000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    command: uvicorn scripts.backend:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+      - ./backend/uploads:/app/uploads
+      - ./backend/models:/app/models
+      - ./backend/datasets:/app/datasets
+      - ./backend/logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_started
+    networks:
+      - app-network
+
+  # --- Celery Worker: Background Task Runner ---
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.backend
+    container_name: data-cleaning-worker
+    restart: always
+    command: python -m celery -A scripts.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      - REDIS_URL=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    env_file:
+      - .env
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/models:/app/models
+      - ./backend/datasets:/app/datasets
+      - ./backend/logs:/app/logs
+    depends_on:
+      - redis
+    networks:
+      - app-network
+
+  # --- MLOps: MLflow (Experiment Tracking) ---
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.7.1
+    container_name: data-cleaning-mlflow
+    restart: always
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow-data:/mlflow
+    command: >
+      mlflow server 
+      --backend-store-uri sqlite:///mlflow/mlflow.db 
+      --default-artifact-root /mlflow/artifacts 
+      --host 0.0.0.0
+      --port 5000
+    networks:
+      - app-network
+
+  # --- Cache: Redis (Optional for local dev, Upstash used for production) ---
+  redis:
+    image: redis:7-alpine
+    container_name: data-cleaning-redis
+    restart: always
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local
+  mlflow-data:
+    driver: local
