@@ -1,71 +1,77 @@
-# ===== Environment =====
+# --- PRISM AI: Production Git Ignore Manifest ---
+
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*,cover
+.hypothesis/
+.pytest_cache/
+*.log
+
+# --- Node / React ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+build/
+.eslintcache
+.stylelintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- Environment & Secrets ---
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.cert
+*.crt
+.credentials/
 
-# ===== Node / Frontend =====
-node_modules/
-frontend/node_modules/
-dist/
-build/
-.eslintcache
+# --- Docker & Orchestration ---
+.docker/
+docker-compose.override.yml
+*.tar
+*.tar.gz
 
-# ===== Python =====
-venv/
-env/
-.venv/
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-*.egg-info/
-*.egg
+# --- Prism AI Specific Assets ---
+# Ingestion: Keep the directory structure but ignore data uploads
+backend/api/uploads/*
+backend/uploads/*
+!**/uploads/.gitkeep
 
-# ===== IDE / Editor =====
+# ML & Monitoring: MLflow data and Joblib artifacts
+mlruns/
+mlflow.db
+*.joblib
+*.pkl
+*.model
+*.onnx
+*.weights
+*.h5
+*.ckpt
+
+# --- IDE & OS Junk ---
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
-.project
-.settings/
-.classpath
-.factorypath
-
-# ===== OS =====
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# ===== Generated Data / Storage =====
-uploads/
-backend/uploads/
-datasets/
-backend/datasets/
-models/
-backend/models/
-data/
-*.db
-*.sqlite3
-
-# ===== Logs =====
-*.log
-logs/
-backend/logs/
-
-# ===== Test/Debug files =====
-debug_*.py
-quick_test.py
-e2e_test.py
-demo.py
-verify_platform.py
-setup_test_db.py
-STABILIZATION_REPORT.md
-
-# ===== Jupyter =====
-.ipynb_checkpoints/
-*.ipynb
-
-# ===== Byte-compiled =====
-*.pyc
-*.pyo

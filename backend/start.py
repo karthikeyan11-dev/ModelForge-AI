@@ -16,7 +16,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 def print_banner():
     print("""
     ╔════════════════════════════════════════════════════════════╗
-    ║  🧹 AI Data Cleaning System - Quick Start                 ║
+    ║  🚀 Prism AI - Professional AutoML Platform             ║
     ╠════════════════════════════════════════════════════════════╣
     ║  This script will help you get started quickly            ║
     ╚════════════════════════════════════════════════════════════╝

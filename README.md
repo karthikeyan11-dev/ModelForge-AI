@@ -1,4 +1,4 @@
-# ModelForge AI
+# Prism AI
 
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg)](https://fastapi.tiangolo.com/)
@@ -9,7 +9,7 @@
 
 **End-to-End Automated Data Cleaning & AutoML Platform with MLOps**
 
-ModelForge AI is a high-performance AutoML platform designed to automate the painful parts of data science. From intelligent, context-aware data cleaning to multi-model benchmarking and experiment tracking, it provides a unified environment for building production-grade machine learning pipelines.
+Prism AI is a high-performance AutoML platform designed to automate the painful parts of data science. From intelligent, context-aware data cleaning to multi-model benchmarking and experiment tracking, it provides a unified environment for building production-grade machine learning pipelines.
 
 ---
 
@@ -28,12 +28,12 @@ ModelForge AI is a high-performance AutoML platform designed to automate the pai
 
 ## 🏗️ Architecture
 
-ModelForge AI uses a distributed architecture to ensure scalability and isolation between the API layer and heavy ML computations.
+Prism AI uses a distributed architecture to ensure scalability and isolation between the API layer and heavy ML computations.
 
 ### 🏛️ High-Level Topology
 ```text
 ┌─────────────────────────────────────────────────────────┐
-│                    ModelForge AI Architecture           │
+│                    Prism AI Architecture           │
 └────────┬────────────────────────────────────────┬───────┘
          │                                        │
    ┌─────▼─────┐                          ┌───────▼───────┐
@@ -114,8 +114,8 @@ graph LR
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/karthikeyan11-dev/ModelForge-AI.git
-cd ModelForge-AI
+git clone https://github.com/karthikeyan11-dev/Prism-AI.git
+cd Prism-AI
 ```
 
 ### 2. Configure Environment
@@ -125,7 +125,7 @@ cp .env.example .env
 ```
 
 ### 3. Launch with Docker
-ModelForge AI is fully containerized. Start all services (Frontend, Backend, Workers, Redis, MLflow) with one command:
+Prism AI is fully containerized. Start all services (Frontend, Backend, Workers, Redis, MLflow) with one command:
 ```bash
 docker-compose up --build
 ```
@@ -139,7 +139,7 @@ docker-compose up --build
 
 ## 📊 System Flow
 
-The ModelForge AI pipeline follows a strict MLOps-compliant workflow:
+The Prism AI pipeline follows a strict MLOps-compliant workflow:
 
 ### 🔄 End-to-End Pipeline
 ```text
@@ -213,4 +213,4 @@ Deployment guides for production environments are currently being finalized:
 
 ---
 
-© 2026 ModelForge AI Team. Distributed under the MIT License.
+© 2026 Prism AI Team. Distributed under the MIT License.

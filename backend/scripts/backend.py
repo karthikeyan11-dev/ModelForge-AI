@@ -59,7 +59,7 @@ def sanitize_df_for_json(df):
 
 # Import new AutoML API routers
 try:
-    from api.routes import router as automl_router, mlops_router
+    from api.routes import router as automl_router, mlops_router, health_router
     from api.production_routes import production_router
     AUTOML_AVAILABLE = True
 except ImportError as e:
@@ -106,8 +106,8 @@ validate_api_keys()
 
 
 app = FastAPI(
-    title="AI Data Cleaning + AutoML Platform",
-    description="Production-grade FastAPI backend for AI-powered data cleaning and AutoML using Euri API",
+    title="Prism AI",
+    description="Production-grade FastAPI backend for AI-powered data cleaning and AutoML under the Prism AI ecosystem.",
     version="2.1.0"
 )
 
@@ -126,6 +126,7 @@ if AUTOML_AVAILABLE:
     app.include_router(automl_router)
     app.include_router(mlops_router)
     app.include_router(production_router)
+    app.include_router(health_router)
     
     
     print("✅ AutoML API v2 endpoints registered")
@@ -321,7 +322,7 @@ async def root():
         }
     
     return {
-        "service": "AI Data Cleaning + AutoML Platform",
+        "service": "Prism AI",
         "status": "healthy",
         "version": "2.0.0",
         "powered_by": "Euri API (27+ AI Models)",
@@ -336,7 +337,7 @@ if __name__ == "__main__":
     
     print(f"""
     ╔═══════════════════════════════════════════════════════════════╗
-    ║  🚀 AI Data Cleaning + AutoML Platform - FastAPI              ║
+    ║  🚀 Prism AI - Advanced AutoML Backend             ║
     ╠═══════════════════════════════════════════════════════════════╣
     ║  API URL:      http://{host}:{port}                        ║
     ║  Docs:         http://{host}:{port}/docs                   ║

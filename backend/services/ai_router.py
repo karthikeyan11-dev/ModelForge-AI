@@ -413,29 +413,50 @@ CRITICAL: Return ONLY the cleaned data in valid CSV format.
         chunks = self._chunk_dataframe(request.data, request.batch_size)
         logger.info(f"Split into {len(chunks)} batches of {request.batch_size} rows")
         
-        cleaned_chunks = []
+        cleaned_chunks_with_index = []
         errors = []
         fallback_used = False
-        fallback_reason = None
         
-        for i, chunk in enumerate(chunks):
-            logger.info(f"Processing batch {i + 1}/{len(chunks)}...")
-            
-            cleaned_chunk, used_fallback, reason = self._process_batch(
-                chunk,
+        # Parallel Execution (Audit Requirement 5: Optimized Latency)
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
+        def process_indexed_batch(index, batch_data):
+            logger.info(f"Processing batch {index + 1}/{len(chunks)}...")
+            cleaned, used_fb, reason = self._process_batch(
+                batch_data,
                 request.source_type,
                 max_retries=request.max_retries
             )
+            return index, cleaned, used_fb, reason
+
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_batch = {
+                executor.submit(process_indexed_batch, i, chunk): i 
+                for i, chunk in enumerate(chunks)
+            }
             
-            cleaned_chunks.append(cleaned_chunk)
-            
-            if used_fallback:
-                fallback_used = True
-                fallback_reason = reason
-                errors.append(f"Batch {i + 1}: Fallback triggered - {reason}")
+            for future in as_completed(future_to_batch):
+                try:
+                    idx, cleaned_chunk, used_fb, reason = future.result()
+                    cleaned_chunks_with_index.append((idx, cleaned_chunk))
+                    
+                    if used_fb:
+                        fallback_used = True
+                        errors.append(f"Batch {idx + 1}: Fallback triggered - {reason}")
+                except Exception as exc:
+                    logger.error(f"Batch execution generated an exception: {exc}")
+                    errors.append(f"Batch failed critically: {str(exc)}")
+
+        # Re-sort chunks to maintain original data order
+        cleaned_chunks_with_index.sort(key=lambda x: x[0])
+        cleaned_chunks = [c[1] for c in cleaned_chunks_with_index]
         
-        # Combine all cleaned chunks
-        result_df = pd.concat(cleaned_chunks, ignore_index=True)
+        # Combine all cleaned chunks safely
+        if not cleaned_chunks:
+            logger.warning("No chunks cleaned, returning original data")
+            result_df = request.data
+        else:
+            result_df = pd.concat(cleaned_chunks, ignore_index=True)
         
         processing_time = (time.time() - start_time) * 1000
         

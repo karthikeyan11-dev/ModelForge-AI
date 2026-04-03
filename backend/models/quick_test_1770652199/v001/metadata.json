@@ -1,0 +1,18 @@
+{
+  "version": "v001",
+  "project_id": "quick_test_1770652199",
+  "path": "C:\\Users\\karth\\Desktop\\Projects\\AI-Data-Cleaning-Agent\\AI_Data_Cleaning_Agent\\models\\quick_test_1770652199\\v001",
+  "created_at": "2026-02-09T21:20:02.210523",
+  "is_active": true,
+  "algorithm": "logistic_regression",
+  "cv_mean": 0.8055555555555555,
+  "cv_std": 0.14163943093313291,
+  "problem_type": "classification",
+  "features": [
+    "age",
+    "income"
+  ],
+  "target": "approved",
+  "dataset_id": "ds_1770652199_1ee46b",
+  "training_time": 1.550177812576294
+}

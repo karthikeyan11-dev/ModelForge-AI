@@ -24,17 +24,14 @@ const UploadPage = () => {
   const [notification, setNotification] = useState(null);
   
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   // --- Mutations ---
   const uploadMutation = useMutation({
     mutationFn: (uploadFile) => apiService.uploadDataset(uploadFile, setProgress),
     onSuccess: (data) => {
-      if (data.cleaning_report?.converted) {
-        setNotification({ type: 'warning', message: data.cleaning_report.reason });
-      }
+      setNotification({ type: 'success', message: 'Dataset ingested successfully!' });
       localStorage.setItem('dataset_id', data.dataset_id);
-      setTimeout(() => navigate('/preprocess'), 2000); 
+      setTimeout(() => navigate('/preprocess'), 1500); 
     },
   });
 

@@ -11,25 +11,46 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (token) {
-      localStorage.setItem('token', token);
-      // Optional: Fetch user profile here if you have a /me endpoint
-      // For now, we trust the token exists and is valid (interceptors handle errors)
-      setUser({ id: 'authenticated' }); // Placeholder for user object
-    } else {
-      localStorage.removeItem('token');
-      setUser(null);
-    }
-    setLoading(false);
+    const initAuth = async () => {
+      if (token) {
+        localStorage.setItem('token', token);
+        const savedUser = localStorage.getItem('user');
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+        } else {
+          try {
+            const { data } = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v2'}/auth/profile`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            localStorage.setItem('user', JSON.stringify(data));
+            setUser(data);
+          } catch (err) {
+            console.error("Session restoration failed", err);
+            logout();
+          }
+        }
+      } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null);
+      }
+      setLoading(false);
+    };
+    initAuth();
   }, [token]);
 
-  const login = (newToken) => {
+  const login = (newToken, userData) => {
+    if (userData) {
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+    }
     setToken(newToken);
   };
 
   const logout = () => {
     setToken(null);
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
   };
 
   const value = {

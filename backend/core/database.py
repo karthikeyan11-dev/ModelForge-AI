@@ -20,13 +20,15 @@ if not DATABASE_URL:
     db_name = os.getenv('DB_NAME', 'demodb')
     DATABASE_URL = f"postgresql+psycopg2://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
 
-# engine configuration with connection pooling
+# engine configuration with connection pooling for Supabase Transaction Pooler
 engine = create_engine(
     DATABASE_URL,
-    pool_size=5,
-    max_overflow=10,
+    pool_size=10,
+    max_overflow=20,
     pool_timeout=30,
     pool_recycle=1800,
+    pool_pre_ping=True, # Critical for pooler stability to handle stale connections
+    connect_args={"sslmode": "require"} # Ensure secure cloud transit
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

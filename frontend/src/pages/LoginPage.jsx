@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
-import { Mail, Lock, LogIn, AlertCircle, Loader2, ArrowRight, Cpu } from 'lucide-react';
+import { Mail, Lock, LogIn, AlertCircle, Loader2, ArrowRight, Cpu, Eye, EyeOff } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -31,8 +32,8 @@ const LoginPage = () => {
         password
       });
       
-      const { access_token } = response.data;
-      login(access_token);
+      const { access_token, username } = response.data;
+      login(access_token, { email, username });
       navigate('/upload'); // Redirect to dashboard entry point
     } catch (err) {
       console.error(err);
@@ -116,13 +117,20 @@ const LoginPage = () => {
                 </span>
                 <input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={`w-full pl-12 pr-4 py-4 bg-white/50 border ${fieldErrors.password ? 'border-red-300' : 'border-slate-200'} rounded-2xl focus:ring-4 focus:ring-purple-500/10 focus:border-purple-600 outline-none transition-all placeholder:text-slate-300 font-bold text-sm`}
+                  className={`w-full pl-12 pr-12 py-4 bg-white/50 border ${fieldErrors.password ? 'border-red-300' : 'border-slate-200'} rounded-2xl focus:ring-4 focus:ring-purple-500/10 focus:border-purple-600 outline-none transition-all placeholder:text-slate-300 font-bold text-sm`}
                   placeholder="••••••••"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-600 transition-colors"
+                >
+                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
               {fieldErrors.password && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{fieldErrors.password}</p>}
             </div>

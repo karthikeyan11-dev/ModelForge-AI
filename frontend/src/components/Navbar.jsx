@@ -26,7 +26,7 @@ const Navbar = () => {
             <Cpu className="text-white w-5 h-5" />
           </div>
           <span className="text-lg font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-purple-700 to-indigo-700">
-            AutoML Platform
+            Prism AI
           </span>
         </Link>
 

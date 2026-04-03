@@ -51,9 +51,9 @@ const Landing = () => {
               </div>
               
               <h1 className="text-6xl md:text-7xl font-black tracking-tighter text-slate-900 leading-[0.9] mb-6">
-                AI Data Cleaning <br />
+                Next Gen AutoML <br />
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-800">
-                  + AutoML Platform
+                  Prism AI
                 </span>
               </h1>
               
@@ -118,7 +118,7 @@ const Landing = () => {
       {/* Footer */}
       <footer className="py-12 border-t border-slate-100 bg-white/20 backdrop-blur-sm">
          <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-           <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">© 2026 AutoML Platform</span>
+           <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">© 2026 Prism AI</span>
            <div className="flex items-center space-x-6 text-sm font-bold text-slate-400">
              <a href="#" className="hover:text-purple-600 transition-colors">Privacy</a>
              <a href="#" className="hover:text-purple-600 transition-colors">Documentation</a>

@@ -116,6 +116,8 @@ class CleaningResponse(BaseModel):
     model_used: Optional[str] = None
     processing_time_ms: Optional[float] = None
     message: str
+    dataset_id: Optional[str] = None
+    cleaning_report: Dict[str, Any] = Field(default_factory=dict)
     errors: List[str] = Field(default_factory=list)
 
 
@@ -618,9 +620,10 @@ class UnifiedPipelineExportResponse(BaseModel):
 # ============================================================================
 
 class UserRegister(BaseModel):
-    """Schema for user registration."""
-    email: EmailStr = Field(..., description="User's unique email address")
-    password: str = Field(..., min_length=4, description="User's password (min 4 characters)")
+    """Schema for new user registration."""
+    email: EmailStr
+    username: str = Field(..., min_length=3, max_length=50, description="Display name for the user")
+    password: str = Field(..., min_length=8, description="Secure password")
 
 class UserLogin(BaseModel):
     """Schema for user login."""
@@ -631,11 +634,13 @@ class Token(BaseModel):
     """Schema for JWT token response."""
     access_token: str = Field(..., description="JWT access token")
     token_type: str = Field(default="bearer", description="Token type")
+    username: str = Field(..., description="User's display name")
 
 class UserResponse(BaseModel):
     """Schema for user information response."""
     id: uuid.UUID
     email: EmailStr
+    username: str
     is_active: bool
     created_at: datetime
 
@@ -685,3 +690,21 @@ class APIIngestRequest(BaseModel):
     """Request to store API data."""
     api_url: str = Field(..., description="External JSON API URL")
     dataset_name: str = Field(..., min_length=1, max_length=50, description="User-defined dataset name")
+
+class UploadResponse(BaseModel):
+    """Simplified response for the new non-blocking upload flow."""
+    dataset_id: uuid.UUID
+    filename: str
+    status: str = "uploaded"
+
+class PreprocessResponse(BaseModel):
+    """Immediate response for preprocessing trigger."""
+    task_id: str
+    status: str = "processing_started"
+
+class PreprocessStatusResponse(BaseModel):
+    """Status update response for polling."""
+    task_id: str
+    status: str # pending, running, completed, failed
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None

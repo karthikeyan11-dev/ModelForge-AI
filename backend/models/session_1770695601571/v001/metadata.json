@@ -1,0 +1,19 @@
+{
+  "version": "v001",
+  "project_id": "session_1770695601571",
+  "path": "C:\\Users\\karth\\Desktop\\Projects\\AI-Data-Cleaning-Agent\\AI_Data_Cleaning_Agent\\models\\session_1770695601571\\v001",
+  "created_at": "2026-02-10T09:24:21.584571",
+  "is_active": true,
+  "algorithm": "logistic_regression",
+  "cv_mean": 0.44999999999999996,
+  "cv_std": 0.15,
+  "problem_type": "classification",
+  "features": [
+    "age",
+    "income",
+    "approved"
+  ],
+  "target": "education",
+  "dataset_id": "ds_1770695299_252ce5",
+  "training_time": 35.86832022666931
+}

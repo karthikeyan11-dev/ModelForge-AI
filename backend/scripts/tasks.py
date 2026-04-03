@@ -26,6 +26,115 @@ ALGO_MAP = {
     # Handled via string-to-enum conversion at the task level
 }
 
+@celery_app.task(bind=True, name="scripts.tasks.preprocess_dataset_task")
+def preprocess_dataset_task(self, dataset_id_str: str, user_id_str: str, options: Dict[str, Any] = None) -> Dict[str, Any]:
+    """
+    Step 6: Intelligent Preprocessing Task (Celery)
+    Runs the Agent-driven 'Analyze -> Decide -> Execute -> Standardize -> Explain' flow.
+    """
+    from services.storage_service import storage_service
+    from services.intelligent_preprocessing import IntelligentPreprocessingAgent
+    from core.database import SessionLocal
+    from models.dataset import Dataset
+    import uuid
+    import time
+    from datetime import datetime
+
+    start_time = time.time()
+    db = SessionLocal()
+    
+    try:
+        dataset_id = uuid.UUID(dataset_id_str)
+        user_id = uuid.UUID(user_id_str)
+        
+        # 1. Fetch Metadata
+        ds = db.query(Dataset).filter(Dataset.id == dataset_id, Dataset.user_id == user_id).first()
+        if not ds:
+            raise ValueError("Dataset not found or access denied")
+            
+        logger.info(f"🚀 AGENT START | Dataset: {ds.id} | Name: {ds.name}")
+        self.update_state(state="PROGRESS", meta={"status": "Loading dataset...", "progress": 10})
+        
+        # 2. Load Original (CSV/XLSX/JSON)
+        # storage_service.read_df handles formatting automatically
+        df = storage_service.read_df(ds.storage_path)
+        
+        # 3. RUN AGENT (Audit -> Decide -> Execute)
+        self.update_state(state="PROGRESS", meta={"status": "Agent analyzing and transforming...", "progress": 30})
+        agent = IntelligentPreprocessingAgent()
+        # Option: use options.get("target_column") if provided
+        target = options.get("target_column") if options else None
+        
+        df_processed, report = agent.run_pipeline(df, metadata_target=target)
+        
+        # 4. STANDARDIZE FORMAT (Force v{n}.csv)
+        self.update_state(state="PROGRESS", meta={"status": "Standardizing format to CSV...", "progress": 80})
+        
+        new_version = ds.version + 1
+        user_storage_dir = os.path.dirname(ds.storage_path)
+        processed_filename = f"v{new_version}.csv"
+        processed_path = os.path.join(user_storage_dir, processed_filename)
+        
+        # 4a. Persistence: Save Pipeline Artifact (Step 4)
+        pipeline_dir = os.path.join(user_storage_dir, "pipelines")
+        pipeline_filename = f"{uuid.uuid4()}_v{new_version}.pkl"
+        pipeline_path = os.path.join(pipeline_dir, pipeline_filename)
+        agent.save_pipeline(pipeline_path)
+        
+        # Force CSV standardization
+        storage_service.write_df(processed_path, df_processed)
+        
+        # 5. COMMIT NEW VERSION (Lineage Tracking)
+        # Create a new dataset record for the version
+        new_ds = Dataset(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            name=f"{ds.name} (v{new_version})",
+            filename=processed_filename,
+            storage_path=processed_path,
+            pipeline_path=pipeline_path, # Linked persistent state
+            file_size=float(os.path.getsize(processed_path)),
+            status="processed",
+            row_count=int(df_processed.shape[0]),
+            col_count=int(df_processed.shape[1]),
+            version=new_version,
+            root_dataset_id=ds.root_dataset_id or ds.id,
+            parent_dataset_id=ds.id,
+            is_latest=True,
+            target_column=report.get("target_column"),
+            problem_type=report.get("problem_type")
+        )
+        
+        # Mark parent as not latest
+        ds.is_latest = False
+        
+        db.add(new_ds)
+        db.commit()
+        
+        processing_time_ms = (time.time() - start_time) * 1000
+        logger.info(f"✅ AGENT SUCCESS | New ID: {new_ds.id} | Pipeline Saved: {pipeline_filename}")
+        
+        return {
+            "status": "completed",
+            "dataset_id": str(new_ds.id),
+            "original_id": dataset_id_str,
+            "pipeline_saved": True,
+            "pipeline_path": pipeline_path,
+            "steps_applied": report.get("steps_applied", report.get("decision_trace", [])),
+            "analysis_summary": report.get("analysis_summary", {}),
+            "warnings": report.get("warnings", []),
+            "processing_time_ms": processing_time_ms
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ AGENT FAILURE: {str(e)}")
+        if 'db' in locals():
+            db.rollback()
+        return {"status": "failed", "error": str(e)}
+    finally:
+        db.close()
+
+
 @celery_app.task(bind=True, name="scripts.tasks.train_single_model")
 def train_single_model(
     self, 

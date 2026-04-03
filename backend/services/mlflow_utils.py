@@ -6,6 +6,7 @@ import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import pandas as pd
+import math
 
 logger = logging.getLogger(__name__)
 

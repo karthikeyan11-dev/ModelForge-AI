@@ -1,0 +1,134 @@
+﻿python : PREPROCESS 
+[duplicate_removal] applied=False | 
+No duplicates found
+At line:1 char:34
++ ... IOENCODING = "utf-8"; python 
+tests/test_full_pipeline.py 2>&1 | 
+Out-F ...
++                           ~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpec 
+   ified: (PREPROCESS [dup...uplicat  
+  es found:String) [], RemoteExcept   
+ ion
+    + FullyQualifiedErrorId : NativeC 
+   ommandError
+ 
+PREPROCESS [feature_selection] 
+applied=False | Pruned 0/2 features 
+(kept 2)
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+PREPROCESS [feature_selection] 
+applied=False | Pruned 0/2 features 
+(kept 2)
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+PREPROCESS [feature_selection] 
+applied=False | Pruned 0/2 features 
+(kept 2)
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+PREPROCESS [feature_selection] 
+applied=False | Pruned 0/2 features 
+(kept 2)
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+PREPROCESS [feature_selection] 
+applied=False | Pruned 0/2 features 
+(kept 2)
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+PREPROCESS [feature_selection] 
+applied=False | Pruned 0/5 features 
+(kept 5)
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+PREPROCESS [target_detection] 
+applied=False | Target='None' via 
+none (confidence=low)
+PREPROCESS [feature_selection] 
+applied=False | Pruned 0/2 features 
+(kept 2)
+PREPROCESS [duplicate_removal] 
+applied=False | No duplicates found
+ΓÜí Step 1: Skew calibration...
+   Low skew ΓåÆ 0.5  Γ£à
+   High skew ΓåÆ 2.0  Γ£à
+
+ΓÜí Step 1: Missing threshold...
+   Small (N=50) ΓåÆ 0.4  Γ£à
+   Large (N=10000) ΓåÆ 0.25  Γ£à
+
+ΓÜí Step 2: Metadata target...
+   Metadata target ΓåÆ label  Γ£à
+
+ΓÜí Step 2: Heuristic target...
+   Heuristic ΓåÆ 'target'  Γ£à
+
+ΓÜí Step 2: ID exclusion...
+   ID excluded, label detected  Γ£à
+
+ΓÜí Step 2: Classification...
+   Classification detected  Γ£à
+
+ΓÜí Step 2: Regression...
+   Regression detected  Γ£à
+
+ΓÜí Step 2: Imbalance detection...
+   Imbalance detected  Γ£à
+
+ΓÜí Step 3: Correlation pruning...
+   Removed: ['f2']
+   Correlation pruning working  Γ£à
+
+ΓÜí Step 3: Importance scores...
+   Importance scores: {'signal': 0.92288, 'noise': 0.07712}
+   Multi-seed importance  Γ£à
+
+ΓÜí Step 3: sqrt(N) safeguard...
+   Kept 4 features (guard: 2)  Γ£à
+
+ΓÜí Step 4: Pipeline persistence...
+   Saved to C:\Users\karth\AppData\Local\Temp\prism_test_pipeline.pkl  Γ£à
+   Loaded successfully  Γ£à
+   Inference output shape: (2, 5)  Γ£à
+   Unseen category handled  Γ£à
+
+ΓÜí Step 6: Drift detection...
+   No drift: {'drift_detected': False, 'drift_columns': []}
+   Drift detected: {'drift_detected': True, 'drift_columns': ['a']}  Γ£à
+
+ΓÜí Step 8: Structured logging...
+   All log keys present  Γ£à
+   Execution steps: ['duplicate_removal', 'audit', 'calibration', 'target_detection', 'problem_detection', 'pipeline_build']
+
+ΓÜí Step 9: Error resilience...
+   Tiny dataset survived  Γ£à
+   All-NaN column survived  Γ£à
+
+
+============================================================
+RESULTS: 15 passed, 0 failed out of 15
+============================================================
+Γ£à ALL TESTS PASSED ΓÇö System is production-ready.

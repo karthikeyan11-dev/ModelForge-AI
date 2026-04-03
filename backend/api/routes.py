@@ -21,7 +21,7 @@ from io import StringIO, BytesIO
 import pandas as pd
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, BackgroundTasks, Form, Query
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 import uuid
 
 # Add parent directory to path for imports
@@ -60,7 +60,8 @@ from .schemas import (
     ValidationRequest, ValidationResponse,
     
     # Dataset & Ingestion (New)
-    DatasetResponse, PreprocessingRequest, APIFetchRequest, APIIngestRequest
+    DatasetResponse, PreprocessingRequest, APIFetchRequest, APIIngestRequest,
+    UploadResponse, PreprocessResponse, PreprocessStatusResponse
 )
 
 logger = logging.getLogger(__name__)
@@ -78,6 +79,11 @@ mlops_router = APIRouter(
     prefix="/api/v2/mlops", 
     tags=["MLOps"],
     dependencies=[Depends(get_current_user)]
+)
+# Public router for health checks and status
+health_router = APIRouter(
+    prefix="/api/v2",
+    tags=["Health"]
 )
 
 
@@ -131,151 +137,194 @@ def get_session(current_user: User = Depends(get_current_user)) -> Dict[str, Any
 # Data Upload & Cleaning Endpoints
 # ============================================================================
 
-@router.post("/upload-data", response_model=CleaningResponse)
+@router.post("/upload-data", response_model=UploadResponse)
 async def upload_data(
     file: UploadFile = File(...),
     dataset_name: Optional[str] = Form(None),
-    apply_cleaning: bool = True,
     current_user: User = Depends(get_current_user),
-    session: Dict = Depends(get_session)
+    db: Session = Depends(get_db)
 ):
     """
-    Upload and optionally clean a CSV/Excel file.
-    
-    - Accepts CSV or Excel files
-    - Applies rule-based + AI-powered cleaning if enabled
-    - Stores data in session for subsequent operations
+    Step 1: Production-Grade Stable Ingestion
+    - Non-blocking: ONLY handles storage and DB entry
+    - Memory-Efficient: Streams file directly to disk
+    - Resilient: Comprehensive error handling returning JSON
     """
+    import shutil
+    import uuid
+    from models.dataset import Dataset
+
+    request_id = str(uuid.uuid4())[:8]
+    logger.info(f"[{request_id}] Raw Ingestion Event: {file.filename} (User: {current_user.id})")
+    
     try:
-        # Read file
-        contents = await file.read()
+        # 1. Validation Logic
         file_ext = file.filename.split(".")[-1].lower()
+        if file_ext not in ["csv", "xlsx", "xls", "json"]:
+            logger.warning(f"[{request_id}] Validation Blocked: Unsupported extension '{file_ext}'")
+            raise HTTPException(status_code=400, detail="Unsupported file format.")
         
-        # --- Intelligent Format Handling ---
-        supported_tabular = ["csv", "xlsx", "xls"]
-        converted = False
-        reason = ""
-        
-        if file_ext == "csv":
-            df = pd.read_csv(BytesIO(contents))
-        elif file_ext in ["xlsx", "xls"]:
-            df = pd.read_excel(BytesIO(contents))
-        elif file_ext in ["json", "xml"]:
-            # Unsupported format for preprocessing, but convertible
-            try:
-                if file_ext == "json":
-                    df = pd.read_json(BytesIO(contents))
-                else:
-                    df = pd.read_xml(BytesIO(contents))
-                
-                converted = True
-                reason = f"The {file_ext.upper()} format is not natively supported for preprocessing. It has been converted to CSV for compatibility."
-            except Exception as e:
-                raise HTTPException(status_code=400, detail=f"Failed to convert {file_ext.upper()} to tabular format: {str(e)}")
-        else:
-            raise HTTPException(status_code=400, detail="Unsupported file format. Please upload CSV, Excel, or JSON.")
-        
-        raw_shape = list(df.shape)
-        
-        # --- Data Validation Hook (Great Expectations) ---
-        from services.validation import validator
-        suite_name = f"suite_{file.filename.replace('.', '_')}"
-        try:
-            val_results = validator.validate_dataset(df, suite_name)
-            if not val_results["is_valid"]:
-                raise HTTPException(
-                    status_code=400, 
-                    detail={
-                        'message': 'Data validation failed against expected schema.',
-                        'issues': val_results['issues']
-                    }
-                )
-        except ValueError:
-            # First time seeing this dataset; auto-generate dynamic baseline expectations
-            validator.generate_baseline_expectations(df, suite_name)
-            logger.info(f"Generated baseline expectations for {suite_name}")
-        # ---------------------------------------------------
-        
-        if apply_cleaning:
-            # Import services
-            from services.ai_router import AIRouter, DataSourceType as DST, CleaningRequest
-            from scripts.data_cleaning import DataCleaning
-            
-            # Rule-based cleaning first
-            cleaner = DataCleaning()
-            df = cleaner.clean_data(df)
-            
-            # AI-powered cleaning
-            ai_router = AIRouter()
-            request = CleaningRequest(
-                data=df,
-                source_type=DST.UPLOAD,
-                batch_size=20
-            )
-            result = ai_router.clean(request)
-            df = result.cleaned_data
-            model_used = result.model_used
-            processing_time = result.processing_time_ms
-        else:
-            model_used = None
-            processing_time = 0
-            
-        # Store in session (legacy support)
-        session["data"] = df
-        session["source_type"] = "upload"
-        
-        # ---------------------------------------------------
-        # DURABLE STORAGE (Rule #1, #2)
-        # ---------------------------------------------------
-        from models.dataset import Dataset
-        import uuid
-        
+        # 2. Storage Setup
         dataset_uuid = uuid.uuid4()
         user_id_str = str(current_user.id)
-        
-        # Consistent pathing: uploads/{user_id}/{dataset_id}/v1.csv
-        # We enforce CSV for storage consistency in the pipeline
-        storage_filename = "v1.csv"
         user_storage_dir = os.path.join("uploads", user_id_str, str(dataset_uuid))
+        storage_filename = f"raw_{file.filename}"
         storage_path = os.path.join(user_storage_dir, storage_filename)
         
-        # Save via StorageService (Mandatory)
-        storage_service.write_df(storage_path, df)
+        os.makedirs(user_storage_dir, exist_ok=True)
         
-        # Prepare DB entry
+        # 3. Stream File (Rule #1 Fix: Zero-Load Memory Streaming)
+        logger.info(f"[{request_id}] Write Cycle Started: {storage_path}")
+        start_time = datetime.utcnow()
+        
+        # Explicit file pointer streaming to prevent Event Loop Blocking or OOM
+        with open(storage_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        write_time = (datetime.utcnow() - start_time).total_seconds()
+        file_size = os.path.getsize(storage_path)
+        logger.info(f"[{request_id}] Write Cycle Completed ({file_size} bytes in {write_time:.2f}s)")
+        
+        # 4. Database Transaction
         display_name = dataset_name or file.filename
-        db = next(get_db())
         new_dataset = Dataset(
             id=dataset_uuid,
             user_id=current_user.id,
             name=display_name,
-            filename=f"v1_{file.filename}",
+            filename=file.filename,
             storage_path=storage_path,
-            file_size=storage_service.get_file_size(storage_path),
-            status="raw",
-            row_count=raw_shape[0],
-            col_count=raw_shape[1],
+            file_size=float(file_size),
+            status="uploaded",
             version=1,
             is_latest=True
         )
         db.add(new_dataset)
         db.commit()
+        logger.info(f"[{request_id}] Transaction Committed: {dataset_uuid}")
         
-        return CleaningResponse(
-            success=True,
-            cleaned_data=df.head(100).to_dict(orient="records"),
-            raw_shape=raw_shape,
-            cleaned_shape=list(df.shape),
-            cleaning_report={"converted": converted, "reason": reason} if converted else {},
-            dataset_id=str(dataset_uuid),
-            model_used=model_used,
-            processing_time_ms=processing_time,
-            message=f"Successfully ingested {display_name}"
+        return UploadResponse(
+            dataset_id=dataset_uuid,
+            filename=file.filename,
+            status="uploaded"
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Upload error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"[{request_id}] CRITICAL INGESTION CRASH: {str(e)}", exc_info=True)
+        # 5. Cleanup: If file was written but DB failed, remove the file to prevent orphans
+        try:
+            if 'storage_path' in locals() and os.path.exists(storage_path):
+                os.remove(storage_path)
+                logger.info(f"[{request_id}] Cleanup: Removed orphaned file {storage_path}")
+                # Recursively remove dir if empty
+                parent_dir = os.path.dirname(storage_path)
+                if not os.listdir(parent_dir):
+                    os.rmdir(parent_dir)
+        except Exception as cleanup_err:
+            logger.error(f"[{request_id}] Cleanup failed: {str(cleanup_err)}")
+
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": f"Ingestion Failure: Internal system error during data persistence. Technical detail: {str(e)}",
+                "request_id": request_id
+            }
+        )
+    finally:
+        # Mandatory: Close the spool file to release handles
+        await file.close()
+
+
+@router.get("/datasets", response_model=List[DatasetResponse])
+async def get_datasets(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Step 2: Dataset Listing (Preprocess Page)
+    Fetch all datasets uploaded by the current user.
+    """
+    from models.dataset import Dataset
+    datasets = db.query(Dataset).filter(Dataset.user_id == current_user.id).order_by(Dataset.created_at.desc()).all()
+    return datasets
+
+
+@router.post("/preprocess/{dataset_id}", response_model=PreprocessResponse)
+async def trigger_preprocessing(
+    dataset_id: uuid.UUID,
+    config: PreprocessingRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Step 3: Preprocessing Trigger
+    Triggers a Celery background task for intelligent preprocessing.
+    """
+    from models.dataset import Dataset
+    from scripts.tasks import preprocess_dataset_task
+    
+    # 1. Verify dataset exists and belongs to user
+    dataset = db.query(Dataset).filter(Dataset.id == dataset_id, Dataset.user_id == current_user.id).first()
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    # 2. Trigger Celery task
+    task = preprocess_dataset_task.delay(
+        str(dataset_id), 
+        str(current_user.id),
+        config.options.dict()
+    )
+    
+    # 3. Update dataset status
+    dataset.status = "processing_started"
+    db.commit()
+    
+    return PreprocessResponse(
+        task_id=task.id,
+        status="processing_started"
+    )
+
+
+@router.get("/preprocess-status/{task_id}", response_model=PreprocessStatusResponse)
+async def get_preprocess_status(
+    task_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Step 6: Status Tracking
+    Poll Celery task status for preprocessing results.
+    """
+    from celery.result import AsyncResult
+    from scripts.celery_app import celery_app
+    
+    res = AsyncResult(task_id, app=celery_app)
+    
+    status_map = {
+        "PENDING": "pending",
+        "STARTED": "running",
+        "PROGRESS": "running",
+        "SUCCESS": "completed",
+        "FAILURE": "failed",
+        "RETRY": "running"
+    }
+    
+    status = status_map.get(res.status, "pending")
+    result = None
+    error = None
+    
+    if res.status == "SUCCESS":
+        result = res.result
+    elif res.status == "FAILURE":
+        error = str(res.result)
+    
+    return PreprocessStatusResponse(
+        task_id=task_id,
+        status=status,
+        result=result,
+        error=error
+    )
 
 
 @router.post("/validate-dataset", response_model=ValidationResponse)
@@ -1133,25 +1182,6 @@ async def predict(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ============================================================================
-# Health & Status
-# ============================================================================
-
-@router.get("/health", response_model=HealthResponse)
-async def health_check():
-    """
-    API health check.
-    """
-    return HealthResponse(
-        status="healthy",
-        version="2.0.0",
-        services={
-            "ai_router": "available",
-            "ml_pipeline": "available",
-            "model_manager": "available"
-        },
-        timestamp=datetime.now().isoformat()
-    )
 
 
 @router.get("/session-state", response_model=SessionState)
@@ -1319,40 +1349,6 @@ async def get_dataset_versions(
     return PreprocessingService.get_dataset_versions(db, dataset_id, current_user.id)
 
 
-@router.post("/preprocess/{dataset_id}", response_model=JobSubmitResponse)
-async def trigger_preprocessing(
-    dataset_id: uuid.UUID,
-    request: PreprocessingRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Trigger an asynchronous preprocessing job for a specific dataset.
-    """
-    from services.preprocessing_service import PreprocessingService
-    from scripts.tasks import preprocess_dataset_task
-    
-    # 1. Verify dataset exists and belongs to user
-    dataset = PreprocessingService.get_dataset_by_id(db, dataset_id, current_user.id)
-    if not dataset:
-        raise HTTPException(status_code=404, detail="Dataset not found or access denied")
-    
-    # 2. Update status to processing
-    dataset.status = "processing"
-    db.commit()
-    
-    # 3. Trigger Celery Task
-    task = preprocess_dataset_task.delay(
-        str(dataset_id),
-        str(current_user.id),
-        request.options.dict()
-    )
-    
-    return JobSubmitResponse(
-        job_id=task.id,
-        status=JobStatus.RUNNING,
-        message="Preprocessing job started successfully"
-    )
 
 
 @router.get("/preprocess/status/{job_id}", response_model=JobStatusResponse)
@@ -1512,3 +1508,21 @@ async def get_leaderboard(
     except Exception as e:
         logger.error(f"Leaderboard API Error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to fetch model leaderboard from MLflow server.")
+
+
+@health_router.get("/health", response_model=HealthResponse)
+async def health_check():
+    """
+    Step 4: Health Audit
+    Used by Docker orchestration to verify system availability.
+    """
+    return HealthResponse(
+        status="ok",
+        version="2.0.0-stable",
+        services={
+            "api": "online",
+            "storage": "active",
+            "ml_engine": "ready"
+        },
+        timestamp=datetime.utcnow().isoformat()
+    )

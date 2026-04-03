@@ -11,10 +11,10 @@ class AuthService:
     """Service for handling authentication and user registration."""
     
     @staticmethod
-    def register_user(db: Session, email: EmailStr, password: str) -> User:
+    def register_user(db: Session, email: EmailStr, password: str, username: str) -> User:
         """Register a new user in the system."""
         try:
-            logger.info(f"Attempting to register user: {email}")
+            logger.info(f"Attempting to register user: {email} ({username})")
             
             # Check for existing user
             db_user = db.query(User).filter(User.email == email).first()
@@ -28,6 +28,7 @@ class AuthService:
             # Create new user
             new_user = User(
                 email=email,
+                username=username,
                 hashed_password=hash_password(password)
             )
             db.add(new_user)
@@ -56,8 +57,8 @@ class AuthService:
             )
 
     @staticmethod
-    def login_user(db: Session, email: EmailStr, password: str) -> str:
-        """Authenticate user and return JWT access token."""
+    def login_user(db: Session, email: EmailStr, password: str) -> tuple[str, str]:
+        """Authenticate user and return JWT access token and username."""
         user = db.query(User).filter(User.email == email).first()
         
         # 401: Invalid credentials
@@ -76,4 +77,5 @@ class AuthService:
             )
 
         # Generate access token with user.id as subject
-        return create_access_token(subject=str(user.id))
+        token = create_access_token(subject=str(user.id))
+        return token, user.username

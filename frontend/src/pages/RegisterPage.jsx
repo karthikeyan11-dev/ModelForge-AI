@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Mail, Lock, UserPlus, AlertCircle, Loader2, CheckCircle, ArrowRight, Cpu } from 'lucide-react';
+import { Mail, Lock, UserPlus, User, AlertCircle, Loader2, CheckCircle, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
@@ -9,8 +9,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const RegisterPage = () => {
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -34,6 +37,7 @@ const RegisterPage = () => {
     try {
       await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v2'}/auth/register`, {
         email,
+        username,
         password
       });
       
@@ -110,8 +114,29 @@ const RegisterPage = () => {
                 </div>
               )}
 
-              <form onSubmit={handleRegister} className="space-y-5">
-                <div className="space-y-2">
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-black text-slate-400 tracking-widest uppercase ml-1" htmlFor="username">
+                    Full Name / Username
+                  </label>
+                  <div className={`relative group ${fieldErrors.username ? 'ring-2 ring-red-500/20' : ''}`}>
+                    <span className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${fieldErrors.username ? 'text-red-400' : 'text-slate-400 group-focus-within:text-indigo-600'}`}>
+                      <User size={18} />
+                    </span>
+                    <input
+                      id="username"
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className={`w-full pl-12 pr-4 py-3.5 bg-white/50 border ${fieldErrors.username ? 'border-red-300' : 'border-slate-200'} rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition-all placeholder:text-slate-300 font-bold text-sm`}
+                      placeholder="Karthikeyan"
+                      required
+                    />
+                  </div>
+                  {fieldErrors.username && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{fieldErrors.username}</p>}
+                </div>
+
+                <div className="space-y-1.5">
                   <label className="block text-[10px] font-black text-slate-400 tracking-widest uppercase ml-1" htmlFor="email">
                     Email Address
                   </label>
@@ -124,14 +149,14 @@ const RegisterPage = () => {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className={`w-full pl-12 pr-4 py-4 bg-white/50 border ${fieldErrors.email ? 'border-red-300' : 'border-slate-200'} rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition-all placeholder:text-slate-300 font-bold text-sm`}
+                      className={`w-full pl-12 pr-4 py-3.5 bg-white/50 border ${fieldErrors.email ? 'border-red-300' : 'border-slate-200'} rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition-all placeholder:text-slate-300 font-bold text-sm`}
                       placeholder="alex@company.com"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="block text-[10px] font-black text-slate-400 tracking-widest uppercase ml-1" htmlFor="password">
                     Password
                   </label>
@@ -141,17 +166,24 @@ const RegisterPage = () => {
                     </span>
                     <input
                       id="password"
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className={`w-full pl-12 pr-4 py-4 bg-white/50 border ${fieldErrors.password ? 'border-red-300' : 'border-slate-200'} rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition-all placeholder:text-slate-300 font-bold text-sm`}
+                      className={`w-full pl-12 pr-12 py-3.5 bg-white/50 border ${fieldErrors.password ? 'border-red-300' : 'border-slate-200'} rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition-all placeholder:text-slate-300 font-bold text-sm`}
                       placeholder="••••••••"
                       required
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="block text-[10px] font-black text-slate-400 tracking-widest uppercase ml-1" htmlFor="confirm">
                     Confirm Password
                   </label>
@@ -161,13 +193,20 @@ const RegisterPage = () => {
                     </span>
                     <input
                       id="confirm"
-                      type="password"
+                      type={showConfirmPassword ? "text" : "password"}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className={`w-full pl-12 pr-4 py-4 bg-white/50 border ${fieldErrors.confirm ? 'border-red-300' : 'border-slate-200'} rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition-all placeholder:text-slate-300 font-bold text-sm`}
+                      className={`w-full pl-12 pr-12 py-3.5 bg-white/50 border ${fieldErrors.confirm ? 'border-red-300' : 'border-slate-200'} rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition-all placeholder:text-slate-300 font-bold text-sm`}
                       placeholder="Repeat password"
                       required
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                   {fieldErrors.confirm && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{fieldErrors.confirm}</p>}
                 </div>

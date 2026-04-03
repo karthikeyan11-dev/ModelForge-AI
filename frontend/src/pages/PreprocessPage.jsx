@@ -25,16 +25,18 @@ const PreprocessPage = () => {
     remove_duplicates: true,
     encode_categorical: true,
     scale_numerical: false,
-    remove_outliers: false
+    remove_outliers: false,
+    automated: true
   });
-  const [jobId, setJobId] = useState(null);
+  const [taskId, setTaskId] = useState(null);
   const [polling, setPolling] = useState(false);
   const [showAllVersions, setShowAllVersions] = useState(false);
+  const [results, setResults] = useState(null);
 
-  // 1. Fetch Datasets (Fetch latest versions by default)
+  // 1. Fetch Datasets
   const { data: datasets, isLoading, error } = useQuery({
-    queryKey: ['datasets', showAllVersions],
-    queryFn: () => apiService.getDatasets(showAllVersions ? false : true),
+    queryKey: ['datasets'],
+    queryFn: () => apiService.getDatasets(),
     refetchInterval: polling ? 3000 : false 
   });
 
@@ -42,8 +44,9 @@ const PreprocessPage = () => {
   const preprocessMutation = useMutation({
     mutationFn: ({ id, options }) => apiService.startPreprocessing(id, options),
     onSuccess: (data) => {
-      setJobId(data.job_id);
+      setTaskId(data.task_id);
       setPolling(true);
+      setResults(null);
       queryClient.invalidateQueries(['datasets']);
     }
   });
@@ -51,15 +54,19 @@ const PreprocessPage = () => {
   // 3. Status Polling Task
   useEffect(() => {
     let interval;
-    if (polling && jobId) {
+    if (polling && taskId) {
       interval = setInterval(async () => {
         try {
-          const status = await apiService.getPreprocessingStatus(jobId);
-          if (status.status === 'SUCCESS' || status.status === 'FAILURE') {
+          const res = await apiService.getPreprocessingStatus(taskId);
+          if (res.status === 'completed') {
             setPolling(false);
-            setJobId(null);
-            setSelectedDataset(null);
+            setTaskId(null);
+            setResults(res.result);
             queryClient.invalidateQueries(['datasets']);
+          } else if (res.status === 'failed') {
+            setPolling(false);
+            setTaskId(null);
+            console.error("Task failed:", res.error);
           }
         } catch (err) {
           console.error("Polling error", err);
@@ -68,7 +75,7 @@ const PreprocessPage = () => {
       }, 3000);
     }
     return () => clearInterval(interval);
-  }, [polling, jobId, queryClient]);
+  }, [polling, taskId, queryClient]);
 
   const handleStart = () => {
     if (!selectedDataset) return;
@@ -207,24 +214,57 @@ const PreprocessPage = () => {
 
                 <div className="space-y-4">
                   <ConfigToggle 
-                    label="Handle missing values" 
-                    desc="Production clean imputation"
-                    checked={options.handle_missing} 
-                    onChange={(v) => setOptions({...options, handle_missing: v})} 
+                    label="Automated Intelligent Pipeline" 
+                    desc="Self-analyzing preprocessing"
+                    checked={options.automated} 
+                    onChange={(v) => setOptions({...options, automated: v})} 
+                    highlight={true}
                   />
-                  <ConfigToggle 
-                    label="Encode categorical" 
-                    desc="Auto-feature engineering"
-                    checked={options.encode_categorical} 
-                    onChange={(v) => setOptions({...options, encode_categorical: v})} 
-                  />
-                  <ConfigToggle 
-                    label="Scale numerical" 
-                    desc="ML-ready normalization"
-                    checked={options.scale_numerical} 
-                    onChange={(v) => setOptions({...options, scale_numerical: v})} 
-                  />
+                  {!options.automated && (
+                    <div className="space-y-4 pt-2 border-t border-gray-100 mt-2">
+                        <ConfigToggle 
+                            label="Handle missing values" 
+                            desc="Numerical & Categorical imputation"
+                            checked={options.handle_missing} 
+                            onChange={(v) => setOptions({...options, handle_missing: v})} 
+                        />
+                        <ConfigToggle 
+                            label="Encode categorical" 
+                            desc="One-Hot encoding for strings"
+                            checked={options.encode_categorical} 
+                            onChange={(v) => setOptions({...options, encode_categorical: v})} 
+                        />
+                        <ConfigToggle 
+                            label="Scale numerical" 
+                            desc="StandardScaler (Z-score)"
+                            checked={options.scale_numerical} 
+                            onChange={(v) => setOptions({...options, scale_numerical: v})} 
+                        />
+                        <ConfigToggle 
+                            label="Remove outliers" 
+                            desc="IQR-based clipping"
+                            checked={options.remove_outliers} 
+                            onChange={(v) => setOptions({...options, remove_outliers: v})} 
+                        />
+                    </div>
+                  )}
                 </div>
+
+                {results && (
+                  <div className="bg-green-50 border border-green-100 rounded-xl p-4 animate-in fade-in duration-500">
+                    <p className="text-xs font-black text-green-700 uppercase tracking-widest mb-2">Preprocessing Applied</p>
+                    <div className="flex flex-wrap gap-2">
+                        {results.steps_applied?.map(step => (
+                            <span key={step} className="text-[10px] font-bold bg-green-200 text-green-800 px-2 py-0.5 rounded uppercase">
+                                {step.replace(/_/g, ' ')}
+                            </span>
+                        ))}
+                    </div>
+                    <div className="mt-2 text-[10px] text-green-600 font-medium italic">
+                        Processing time: {results.processing_time_ms?.toFixed(0)}ms
+                    </div>
+                  </div>
+                )}
 
                 <div className="pt-6 border-t border-gray-100">
                   <button
@@ -241,7 +281,7 @@ const PreprocessPage = () => {
                     ) : (
                       <Play className="h-5 w-5 mr-2 fill-current" />
                     )}
-                    {polling ? 'PARALLEL PREPROCESSING...' : `COMMIT v${selectedDataset.version + 1}`}
+                    {polling ? 'ENGINE ANALYZING...' : `PREPROCESS DATA`}
                   </button>
                   <div className="mt-4 flex items-center justify-center text-xs text-gray-400 space-x-4">
                     <div className="flex items-center">
@@ -269,19 +309,21 @@ const PreprocessPage = () => {
   );
 };
 
-const ConfigToggle = ({ label, desc, checked, onChange }) => (
+const ConfigToggle = ({ label, desc, checked, onChange, highlight = false }) => (
   <div 
-    className={`p-3 rounded-xl border-2 transition-all cursor-pointer ${
-      checked ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-transparent hover:border-gray-200'
-    }`}
     onClick={() => onChange(!checked)}
+    className={`p-3 rounded-xl border-2 transition-all cursor-pointer ${
+      checked 
+        ? (highlight ? 'bg-indigo-600 border-indigo-700 shadow-lg' : 'bg-indigo-50 border-indigo-200') 
+        : 'bg-gray-50 border-transparent hover:border-gray-200'
+    }`}
   >
     <div className="flex items-center justify-between">
       <div>
-        <span className={`block text-sm font-bold ${checked ? 'text-indigo-700' : 'text-gray-700'}`}>{label}</span>
-        <span className="text-[10px] text-gray-400 uppercase font-black uppercase tracking-widest">{desc}</span>
+        <span className={`block text-sm font-bold ${checked ? (highlight ? 'text-white' : 'text-indigo-700') : 'text-gray-700'}`}>{label}</span>
+        <span className={`text-[10px] uppercase font-black tracking-widest ${checked && highlight ? 'text-indigo-200' : 'text-gray-400'}`}>{desc}</span>
       </div>
-      <div className={`w-10 h-5 rounded-full p-0.5 transition-colors ${checked ? 'bg-indigo-600' : 'bg-gray-300'}`}>
+      <div className={`w-10 h-5 rounded-full p-0.5 transition-colors ${checked ? (highlight ? 'bg-white/20' : 'bg-indigo-600') : 'bg-gray-300'}`}>
         <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
       </div>
     </div>

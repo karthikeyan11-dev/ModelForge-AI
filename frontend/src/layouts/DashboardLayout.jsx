@@ -21,16 +21,18 @@ const DashboardLayout = () => {
       <AnimatedBackground />
 
       {/* Sidebar - Hardened with Styling Only */}
-      <aside className="fixed inset-y-0 flex-col w-64 border-r border-purple-100 bg-white/80 backdrop-blur-xl z-20 shadow-xl shadow-purple-500/5">
+      <aside className="fixed inset-y-0 flex flex-col w-64 border-r border-purple-100 bg-white/80 backdrop-blur-xl z-20 shadow-xl shadow-purple-500/5">
+        {/* Top Logo Section */}
         <div className="flex items-center h-20 flex-shrink-0 px-6 bg-gradient-to-br from-purple-700 to-indigo-600 shadow-lg">
           <div className="p-2 bg-white/20 rounded-xl mr-3">
              <Beaker className="text-white w-5 h-5" />
           </div>
-          <h1 className="text-lg font-black text-white tracking-tighter uppercase italic">AutoML AI</h1>
+          <h1 className="text-lg font-black text-white tracking-tighter uppercase italic">PRISM AI</h1>
         </div>
 
-        <div className="flex-1 flex flex-col overflow-y-auto w-full pt-8 pb-4">
-          <nav className="flex-1 px-4 space-y-2">
+        {/* Navigation Section (Scrollable) */}
+        <div className="flex-1 flex flex-col overflow-y-auto w-full pt-8">
+          <nav className="px-4 space-y-2">
             {navigation.map((item) => (
               <NavLink
                 key={item.name}
@@ -39,7 +41,7 @@ const DashboardLayout = () => {
                   `group flex items-center px-4 py-3 text-sm font-black rounded-2xl transition-all ${
                     isActive
                       ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20'
-                      : 'text-slate-400 hover:bg-purple-50 hover:text-purple-700'
+                      : 'text-slate-500 hover:bg-purple-50 hover:text-purple-700'
                   }`
                 }
               >
@@ -57,17 +59,17 @@ const DashboardLayout = () => {
               </NavLink>
             ))}
           </nav>
+        </div>
 
-          {/* Sidebar Footer */}
-          <div className="p-4 mt-auto">
-             <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl p-4 border border-purple-100/50">
-                <p className="text-[10px] font-black text-purple-700 uppercase tracking-widest mb-1">Status</p>
-                <div className="flex items-center space-x-2">
-                   <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                   <span className="text-xs font-bold text-slate-600">Engine Ready</span>
-                </div>
-             </div>
-          </div>
+        {/* Sidebar Footer - Anchored to Absolute Bottom */}
+        <div className="p-4 mt-auto pb-8">
+           <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl p-4 border border-purple-100/50">
+              <p className="text-[10px] font-black text-purple-700 uppercase tracking-widest mb-1">Status</p>
+              <div className="flex items-center space-x-2">
+                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                 <span className="text-xs font-bold text-slate-600">Engine Ready</span>
+              </div>
+           </div>
         </div>
       </aside>
 
@@ -78,7 +80,9 @@ const DashboardLayout = () => {
           <div className="max-w-7xl mx-auto py-5 px-6 lg:px-8 flex items-center justify-between">
              <div className="flex items-center space-x-3">
                 <div className="w-1.5 h-6 bg-purple-600 rounded-full"></div>
-                <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight">Pipeline Control Center</h2>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight">
+                   {user?.username ? `Hey ${user.username} 👋` : "Hey there 👋"}
+                </h2>
              </div>
              
              <div className="flex items-center space-x-6">
@@ -89,13 +93,10 @@ const DashboardLayout = () => {
                   <LogOut className="h-4 w-4 mr-2" />
                   LOGOUT
                 </button>
-                <div className="flex items-center space-x-3 bg-white/80 p-1.5 pr-4 rounded-2xl border border-white shadow-sm transition-transform hover:scale-105 cursor-pointer">
+                <div className="flex items-center bg-white/80 p-1.5 rounded-2xl border border-white shadow-sm transition-transform hover:scale-105 cursor-pointer">
                   <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white flex items-center justify-center font-black text-xs shadow-lg shadow-purple-500/20">
-                    {user?.email?.substring(0, 2).toUpperCase() || 'AI'}
+                    {user?.username ? user.username.charAt(0).toUpperCase() : "?"}
                   </div>
-                  <span className="text-xs font-black text-slate-500 tracking-tight truncate max-w-[120px]">
-                    {user?.email || 'Administrator'}
-                  </span>
                 </div>
              </div>
           </div>

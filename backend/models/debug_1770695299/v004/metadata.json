@@ -1,0 +1,19 @@
+{
+  "version": "v004",
+  "project_id": "debug_1770695299",
+  "path": "C:\\Users\\karth\\Desktop\\Projects\\AI-Data-Cleaning-Agent\\AI_Data_Cleaning_Agent\\models\\debug_1770695299\\v004",
+  "created_at": "2026-02-10T09:18:26.397964",
+  "is_active": true,
+  "algorithm": "svm",
+  "cv_mean": 0.9523809523809524,
+  "cv_std": 0.0673435029701474,
+  "problem_type": "classification",
+  "features": [
+    "age",
+    "income",
+    "education"
+  ],
+  "target": "approved",
+  "dataset_id": "ds_1770695299_252ce5",
+  "training_time": 1.326251745223999
+}

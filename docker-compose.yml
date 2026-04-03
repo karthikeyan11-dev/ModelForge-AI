@@ -1,4 +1,4 @@
-version: '3.8'
+name: prism-ai
 
 services:
   # --- Backend: FastAPI ---
@@ -6,13 +6,13 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile.backend
-    container_name: data-cleaning-backend
+    container_name: prism-ai-backend
     restart: always
     environment:
       - FASTAPI_HOST=0.0.0.0
       - FASTAPI_PORT=8000
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
       - MLFLOW_TRACKING_URI=http://mlflow:5000
     env_file:
       - .env
@@ -25,23 +25,29 @@ services:
       - ./backend/models:/app/models
       - ./backend/datasets:/app/datasets
       - ./backend/logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v2/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     depends_on:
       redis:
-        condition: service_started
+        condition: service_healthy
     networks:
-      - app-network
+      - prism-ai-network
 
   # --- Celery Worker: Background Task Runner ---
   worker:
     build:
       context: .
       dockerfile: backend/Dockerfile.backend
-    container_name: data-cleaning-worker
+    container_name: prism-ai-worker
     restart: always
     command: python -m celery -A scripts.celery_app worker --loglevel=info --concurrency=4
     environment:
-      - REDIS_URL=${REDIS_URL}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
       - MLFLOW_TRACKING_URI=http://mlflow:5000
     env_file:
       - .env
@@ -51,14 +57,15 @@ services:
       - ./backend/datasets:/app/datasets
       - ./backend/logs:/app/logs
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
-      - app-network
+      - prism-ai-network
 
   # --- MLOps: MLflow (Experiment Tracking) ---
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.7.1
-    container_name: data-cleaning-mlflow
+    container_name: prism-ai-mlflow
     restart: always
     ports:
       - "5000:5000"
@@ -71,27 +78,35 @@ services:
       --host 0.0.0.0
       --port 5000
     networks:
-      - app-network
+      - prism-ai-network
 
   # --- Cache: Redis (Optional for local dev, Upstash used for production) ---
   redis:
     image: redis:7-alpine
-    container_name: data-cleaning-redis
+    container_name: prism-ai-redis
     restart: always
     command: redis-server --save 60 1 --loglevel warning
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
-      - app-network
+      - prism-ai-network
 
 networks:
-  app-network:
+  prism-ai-network:
+    name: prism-ai-network
     driver: bridge
 
 volumes:
   redis-data:
+    name: prism-ai-redis-data
     driver: local
   mlflow-data:
+    name: prism-ai-mlflow-data
     driver: local
